@@ -51,9 +51,38 @@
 <!-- Quick Links -->
 [**🚀 Quick Start**](#-recommended-solution) · [**📊 Performance**](#-performance-metrics) · [**🏗️ Design**](#-system-architecture) · [**📅 Timeline**](#-timeline--budget) · [**⚠️ Risks**](#-risk-assessment)
 
-<br/>
+<br/><br/>
+
+[![Interactive 3D Digital Twin](https://img.shields.io/badge/3D%20Digital%20Twin-Coaxial%20Octocopter%20Twin-00d8b4?style=for-the-badge&logo=three.js)](docs/3d_drone_twin.html)
+[![Vector Engineering Blueprint](https://img.shields.io/badge/Engineering%20Blueprint-ISO%2010241%20Vector-4ff0ff?style=for-the-badge&logo=blueprint)](results/darpa_lift_airframe_aerodynamics_blueprint.svg)
 
 </div>
+
+---
+
+## 📐 Technical Blueprints & 1:1 Metric 3D Digital Twin
+
+### Sheet 1: Heavy-VTOL Airframe & Aerodynamics Specification
+1:10 metric scale engineering drawing detailing the 8-rotor coaxial octocopter layout (diagonal rotor tip span $\Phi = 2,150\text{ mm}$, boom radius $R = 750\text{ mm}$, coaxial rotor vertical clearance $\Delta z = 180\text{ mm}$), momentum theory wake inflow velocity formulation ($v_i = \sqrt{T / 2\rho A} = 8.94\text{ m/s}$), disk loading $DL = 19.87\text{ kg/m}^2$, coaxial interference factor $\kappa = 1.28$, Toray T1100G graphene-enhanced carbon composite layups (-30% weight), and 3D-printed Ti-6Al-4V lattice motor nodes (-63% weight vs CNC AL).
+
+<div align="center">
+  <img src="results/darpa_lift_airframe_aerodynamics_blueprint.svg" width="100%" alt="DARPA Lift Heavy-VTOL Airframe & Aerodynamics Blueprint">
+</div>
+
+### Sheet 2: 25 kW Wankel Hybrid Powertrain & 5 NM Mission Envelope
+Detailed series-hybrid gas-electric architecture featuring the 25 kW liquid-cooled Wankel rotary engine (SPARCS cooling, 13.5 kg dry weight, 1.85 kW/kg power density), brushless PMG starter/generator, 48V DC bus with active SiC rectification, 6S 45C LiPo dynamic transient buffer (355 Wh), and the 5 nautical mile DARPA mission flight profile (climb at 19.2 kW, cruise at 22 m/s / 350 ft AGL at 13.8 kW, duration 24.9 min vs 30 min limit).
+
+<div align="center">
+  <img src="results/darpa_lift_hybrid_powertrain_blueprint.svg" width="100%" alt="DARPA Lift 25 kW Wankel Hybrid Powertrain Blueprint">
+</div>
+
+### Interactive 1:1 Metric 3D Drone Digital Twin
+Launch the WebGL digital twin locally at [`3d_drone_twin.html`](3d_drone_twin.html) or on GitHub Pages at [`docs/3d_drone_twin.html`](docs/3d_drone_twin.html):
+- **1:1 Metric Airframe:** Precision 3D model with 8 counter-rotating 30-inch carbon fiber props, central Wankel engine block, cooling fins, and RTK GPS mast.
+- **Aerodynamic Downwash Streamlines:** Particle vector field visualizing induced velocity $v_i$ and wake contraction beneath all 4 coaxial booms.
+- **Exploded Engineering View:** Smooth kinematic separation of the airframe, motors, Wankel hybrid engine, LiPo buffer, and cargo latch.
+- **240 lb MIL-STD Cargo Container:** Interactive detachable payload demonstration verifying center-of-gravity alignment.
+- **Dynamic Throttle Simulation:** Continuous hover (16.8 kW) and burst climb (19.2 kW) modes with RPM variation.
 
 ---
 

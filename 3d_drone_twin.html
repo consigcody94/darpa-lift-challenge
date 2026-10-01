@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DARPA LIFT 2026 — 1:1 Metric 3D Digital Twin & Aerodynamic Twin</title>
+  <style>
+    :root {
+      --bg: #030a12;
+      --panel-bg: rgba(4, 18, 32, 0.88);
+      --border: #185a7d;
+      --cyan: #4ff0ff;
+      --teal: #00d8b4;
+      --amber: #ffb834;
+      --red: #ff4d4d;
+      --text: #c2e2f5;
+      --font-mono: 'SF Mono', 'Roboto Mono', 'DejaVu Sans Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* HUD Elements */
+    .hud-header {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .hud-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hud-subtitle {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: #79a8c4;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+    .badge-status {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 10px var(--teal);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+
+    /* Left Specs Telemetry Dock */
+    .left-panel {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      width: 320px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      backdrop-filter: blur(12px);
+      z-index: 10;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      font-size: 12px;
+    }
+    .panel-title {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--cyan);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .telemetry-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 7px 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .tel-label { color: #7aa5be; }
+    .tel-val { color: #ffffff; font-weight: 600; }
+    .ratio-highlight {
+      margin-top: 12px;
+      padding: 10px;
+      background: #06283d;
+      border: 1px solid var(--teal);
+      border-radius: 4px;
+      text-align: center;
+    }
+    .ratio-num {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--teal);
+      font-family: var(--font-mono);
+    }
+    .ratio-desc {
+      font-size: 10px;
+      color: #9ec9e2;
+      margin-top: 2px;
+    }
+
+    /* Right Flight Envelope Inspector */
+    .right-panel {
+      position: absolute;
+      top: 80px;
+      right: 20px;
+      width: 340px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      backdrop-filter: blur(12px);
+      z-index: 10;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      font-size: 12px;
+    }
+    .gauge-container {
+      margin: 10px 0;
+    }
+    .gauge-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: #081d2e;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .gauge-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal), var(--cyan));
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* Bottom Control Bar */
+    .bottom-dock {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 8px 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .btn {
+      background: #0a253a;
+      border: 1px solid #1c5579;
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover, .btn.active {
+      background: var(--cyan);
+      color: #03080e;
+      border-color: var(--cyan);
+      font-weight: 700;
+    }
+
+    /* Live HUD Telemetry Bottom Left */
+    .hud-feed {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 10;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: #689bb8;
+      pointer-events: none;
+      line-height: 1.5;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <div class="hud-header">
+    <div class="hud-title">
+      <span class="badge-status"></span>
+      DARPA LIFT // 1:1 METRIC 3D DIGITAL TWIN
+    </div>
+    <div class="hud-subtitle">240 LB BREAKTHROUGH OCTOCOPTER // 25 kW WANKEL HYBRID POWERTRAIN</div>
+  </div>
+
+  <div class="left-panel">
+    <div class="panel-title">
+      <span>AIRCRAFT TELEMETRY</span>
+      <span style="color:var(--teal)">PHYSICS VALIDATED</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="tel-label">EMPTY WEIGHT</span>
+      <span class="tel-val" style="color:var(--cyan)">20.3 kg (44.8 lbs)</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="tel-label">DARPA WEIGHT LIMIT</span>
+      <span class="tel-val">&lt; 55.0 lbs (24.9 kg)</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="tel-label">EMPTY WEIGHT MARGIN</span>
+      <span class="tel-val" style="color:var(--teal)">+10.2 lbs (+4.6 kg)</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="tel-label">PAYLOAD CAPACITY</span>
+      <span class="tel-val" style="color:var(--amber)">108.9 kg (240.0 lbs)</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="tel-label">ALL-UP WEIGHT (AUW)</span>
+      <span class="tel-val">129.2 kg (284.8 lbs)</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="tel-label">ROTOR DIAMETER</span>
+      <span class="tel-val">8x 30" (762 mm)</span>
+    </div>
+    <div class="telemetry-row">
+      <span class="tel-label">DISK LOADING</span>
+      <span class="tel-val">19.9 kg/m²</span>
+    </div>
+
+    <div class="ratio-highlight">
+      <div class="ratio-num">5.36 : 1</div>
+      <div class="ratio-desc">PAYLOAD-TO-WEIGHT RATIO (TARGET: 4.0:1)</div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-title">
+      <span>MISSION FLIGHT ENVELOPE</span>
+      <span style="color:var(--amber)">5.0 NM CRUISE</span>
+    </div>
+
+    <div class="gauge-container">
+      <div class="telemetry-row">
+        <span class="tel-label">FLIGHT ALTITUDE</span>
+        <span class="tel-val" id="altVal">350 ft AGL</span>
+      </div>
+      <div class="gauge-bar-bg"><div class="gauge-bar-fill" style="width: 70%;"></div></div>
+    </div>
+
+    <div class="gauge-container">
+      <div class="telemetry-row">
+        <span class="tel-label">ELECTRICAL POWER DRAW</span>
+        <span class="tel-val" id="pwrVal">16.8 kW / 25 kW</span>
+      </div>
+      <div class="gauge-bar-bg"><div class="gauge-bar-fill" style="width: 67%;"></div></div>
+    </div>
+
+    <div class="gauge-container">
+      <div class="telemetry-row">
+        <span class="tel-label">CRUISE AIRSPEED</span>
+        <span class="tel-val">22.0 m/s (42.8 kts)</span>
+      </div>
+      <div class="gauge-bar-bg"><div class="gauge-bar-fill" style="width: 80%;"></div></div>
+    </div>
+
+    <div class="gauge-container">
+      <div class="telemetry-row">
+        <span class="tel-label">MISSION TIME (5 NM)</span>
+        <span class="tel-val" style="color:var(--teal)">24.9 min / 30.0 min</span>
+      </div>
+      <div class="gauge-bar-bg"><div class="gauge-bar-fill" style="width: 83%;"></div></div>
+    </div>
+
+    <div style="margin-top:14px; background:#071b2b; padding:10px; border-radius:4px; font-size:11px; line-height:1.45; color:#a2cbde; border-left:2px solid var(--teal);">
+      <strong>Powertrain Ground Truth:</strong> 50x energy density of gasoline vs LiPo batteries enables 25 kW continuous output at only 13.5 kg dry weight.
+    </div>
+  </div>
+
+  <div class="bottom-dock">
+    <button class="btn active" id="btnOrbit">FLIGHT VIEW</button>
+    <button class="btn" id="btnExplode">EXPLODED VIEW</button>
+    <button class="btn active" id="btnFlow">DOWNWASH STREAMLINES</button>
+    <button class="btn" id="btnThrottle">BURST CLIMB (19.2 kW)</button>
+    <button class="btn" id="btnPayload">DETACH PAYLOAD</button>
+  </div>
+
+  <div class="hud-feed">
+    [DARPA] Mission Status: Simulating 5.0 NM Course<br>
+    [WANKEL] SPARCS Liquid Cooling: 82°C Nominal<br>
+    [PROPULSION] 8x Coaxial BLDC: 3,450 RPM Sync<br>
+    [AVIONICS] Triple-redundant EKF / RTK GPS Locked
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. THREE.JS INITIALIZATION & SCENE SETUP
+    // -------------------------------------------------------------
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x030a12);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 3.2, 7.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 2.0;
+    controls.maxDistance = 25.0;
+    controls.target.set(0, 0, 0);
+
+    // Studio Lighting
+    scene.add(new THREE.AmbientLight(0x183750, 1.2));
+    const mainLight = new THREE.DirectionalLight(0x4ff0ff, 2.0);
+    mainLight.position.set(10, 15, 10);
+    mainLight.castShadow = true;
+    scene.add(mainLight);
+
+    const rimLight = new THREE.DirectionalLight(0x00d8b4, 1.2);
+    rimLight.position.set(-10, -5, -10);
+    scene.add(rimLight);
+
+    // -------------------------------------------------------------
+    // 2. 1:1 METRIC DRONE HIERARCHY
+    // -------------------------------------------------------------
+    const drone = new THREE.Group();
+    scene.add(drone);
+
+    // Materials
+    const carbonMat = new THREE.MeshStandardMaterial({
+      color: 0x11161d,
+      roughness: 0.35,
+      metalness: 0.8
+    });
+    const titaniumMat = new THREE.MeshStandardMaterial({
+      color: 0x6e7b85,
+      roughness: 0.25,
+      metalness: 0.95
+    });
+    const wankelEngineMat = new THREE.MeshStandardMaterial({
+      color: 0xb53535,
+      roughness: 0.3,
+      metalness: 0.85
+    });
+    const propMat = new THREE.MeshStandardMaterial({
+      color: 0x050d14,
+      roughness: 0.2,
+      metalness: 0.9,
+      transparent: true,
+      opacity: 0.85
+    });
+    const payloadMat = new THREE.MeshStandardMaterial({
+      color: 0x18382c,
+      roughness: 0.4,
+      metalness: 0.7
+    });
+
+    // Central Fuselage Pod (Wankel Engine & Hybrid System)
+    const fuselageGroup = new THREE.Group();
+    drone.add(fuselageGroup);
+
+    // Fuselage Core Casing
+    const podGeo = new THREE.CylinderGeometry(0.38, 0.42, 0.45, 24);
+    const podMesh = new THREE.Mesh(podGeo, carbonMat);
+    fuselageGroup.add(podMesh);
+
+    // 25 kW Wankel Engine Block (Inside Pod)
+    const engineGeo = new THREE.BoxGeometry(0.32, 0.28, 0.32);
+    const engineMesh = new THREE.Mesh(engineGeo, wankelEngineMat);
+    engineMesh.position.y = 0.05;
+    fuselageGroup.add(engineMesh);
+
+    // Cooling Ribs
+    for (let r = -0.12; r <= 0.12; r += 0.04) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.015, 0.34), titaniumMat);
+      rib.position.y = 0.05 + r;
+      fuselageGroup.add(rib);
+    }
+
+    // Top Avionics Dome
+    const domeGeo = new THREE.SphereGeometry(0.24, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const domeMesh = new THREE.Mesh(domeGeo, new THREE.MeshStandardMaterial({ color: 0x071e2e, metalness: 0.9, roughness: 0.2 }));
+    domeMesh.position.y = 0.22;
+    fuselageGroup.add(domeMesh);
+
+    // RTK GPS Mast
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.25, 8), titaniumMat);
+    mast.position.set(0, 0.34, 0);
+    const gpsPuck = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.02, 16), new THREE.MeshBasicMaterial({ color: 0x4ff0ff }));
+    gpsPuck.position.set(0, 0.46, 0);
+    fuselageGroup.add(mast);
+    fuselageGroup.add(gpsPuck);
+
+    // -------------------------------------------------------------
+    // 3. CARBON FIBER BOOMS & 8 COAXIAL MOTORS
+    // -------------------------------------------------------------
+    const boomLength = 1.075; // Rotor span ~2.15 m tip to tip
+    const armAngles = [Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4, 7 * Math.PI / 4];
+    const upperProps = [];
+    const lowerProps = [];
+    const armsGroup = new THREE.Group();
+    drone.add(armsGroup);
+
+    armAngles.forEach((angle, idx) => {
+      const arm = new THREE.Group();
+      arm.rotation.y = angle;
+
+      // Carbon Fiber Tube
+      const tubeGeo = new THREE.CylinderGeometry(0.032, 0.032, boomLength, 16);
+      const tube = new THREE.Mesh(tubeGeo, carbonMat);
+      tube.rotation.z = Math.PI / 2;
+      tube.position.x = boomLength / 2;
+      arm.add(tube);
+
+      // Ti-6Al-4V 3D Lattice Motor Mount
+      const mountGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.32, 16);
+      const mount = new THREE.Mesh(mountGeo, titaniumMat);
+      mount.position.x = boomLength;
+      arm.add(mount);
+
+      // Upper Motor (M1, M3, M5, M7)
+      const motorGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.06, 16);
+      const mTop = new THREE.Mesh(motorGeo, new THREE.MeshStandardMaterial({ color: 0x1f2b38, metalness: 0.9 }));
+      mTop.position.set(boomLength, 0.16, 0);
+      arm.add(mTop);
+
+      // Upper Propeller (30-inch carbon blade)
+      const propTop = createPropeller(true);
+      propTop.position.set(boomLength, 0.20, 0);
+      arm.add(propTop);
+      upperProps.push(propTop);
+
+      // Lower Motor (M2, M4, M6, M8)
+      const mBot = new THREE.Mesh(motorGeo, new THREE.MeshStandardMaterial({ color: 0x1f2b38, metalness: 0.9 }));
+      mBot.position.set(boomLength, -0.16, 0);
+      arm.add(mBot);
+
+      // Lower Propeller (Counter-rotating)
+      const propBot = createPropeller(false);
+      propBot.position.set(boomLength, -0.20, 0);
+      arm.add(propBot);
+      lowerProps.push(propBot);
+
+      armsGroup.add(arm);
+    });
+
+    function createPropeller(isUpper) {
+      const group = new THREE.Group();
+      const bladeLen = 0.381; // 15" radius -> 30" diameter
+      const bladeGeo = new THREE.BoxGeometry(bladeLen * 2, 0.008, 0.045);
+      const blade = new THREE.Mesh(bladeGeo, propMat);
+      group.add(blade);
+
+      // Center Hub
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.025, 12), titaniumMat);
+      group.add(hub);
+
+      // Motion Blur Disc (Transparent when spinning fast)
+      const blurGeo = new THREE.RingGeometry(0.05, bladeLen, 32);
+      const blurMat = new THREE.MeshBasicMaterial({
+        color: 0x4ff0ff,
+        transparent: true,
+        opacity: 0.08,
+        side: THREE.DoubleSide
+      });
+      const blur = new THREE.Mesh(blurGeo, blurMat);
+      blur.rotation.x = Math.PI / 2;
+      group.add(blur);
+
+      group.userData = { isUpper };
+      return group;
+    }
+
+    // -------------------------------------------------------------
+    // 4. LANDING GEAR & 240 LB PAYLOAD MODULE
+    // -------------------------------------------------------------
+    const landingGroup = new THREE.Group();
+    drone.add(landingGroup);
+
+    // Graphene Landing Skids
+    for (let side of [-0.35, 0.35]) {
+      const skid = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.1, 12), carbonMat);
+      skid.rotation.x = Math.PI / 2;
+      skid.position.set(side, -0.65, 0);
+      landingGroup.add(skid);
+
+      // Struts
+      for (let z of [-0.3, 0.3]) {
+        const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.48, 8), carbonMat);
+        strut.position.set(side * 0.7, -0.42, z);
+        strut.rotation.z = side > 0 ? -0.35 : 0.35;
+        landingGroup.add(strut);
+      }
+    }
+
+    // 240 lb MIL-STD Cargo Container
+    const payloadGroup = new THREE.Group();
+    drone.add(payloadGroup);
+
+    const cargoGeo = new THREE.BoxGeometry(0.55, 0.32, 0.65);
+    const cargoMesh = new THREE.Mesh(cargoGeo, payloadMat);
+    cargoMesh.position.y = -0.44;
+    payloadGroup.add(cargoMesh);
+
+    // Cargo Straps / Latches
+    const strapMat = new THREE.MeshBasicMaterial({ color: 0xffb834 });
+    const strap1 = new THREE.Mesh(new THREE.BoxGeometry(0.57, 0.02, 0.04), strapMat);
+    strap1.position.set(0, -0.44, 0.18);
+    const strap2 = new THREE.Mesh(new THREE.BoxGeometry(0.57, 0.02, 0.04), strapMat);
+    strap2.position.set(0, -0.44, -0.18);
+    payloadGroup.add(strap1);
+    payloadGroup.add(strap2);
+
+    // -------------------------------------------------------------
+    // 5. AERODYNAMIC DOWNWASH STREAMLINES (PARTICLE SYSTEM)
+    // -------------------------------------------------------------
+    const flowGroup = new THREE.Group();
+    scene.add(flowGroup);
+
+    const particleCount = 1200;
+    const flowGeo = new THREE.BufferGeometry();
+    const flowPositions = new Float32Array(particleCount * 3);
+    const flowVelocities = [];
+
+    // Initialize particles beneath the 4 coaxial arms
+    armAngles.forEach((ang) => {
+      const mx = Math.cos(ang) * boomLength;
+      const mz = Math.sin(ang) * boomLength;
+      for (let i = 0; i < particleCount / 4; i++) {
+        const r = Math.random() * 0.38;
+        const theta = Math.random() * Math.PI * 2;
+        const px = mx + r * Math.cos(theta);
+        const pz = mz + r * Math.sin(theta);
+        const py = -0.2 - Math.random() * 2.5;
+
+        const idx = flowVelocities.length;
+        flowPositions[idx * 3] = px;
+        flowPositions[idx * 3 + 1] = py;
+        flowPositions[idx * 3 + 2] = pz;
+
+        flowVelocities.push({
+          homeX: mx, homeZ: mz,
+          speed: 0.03 + Math.random() * 0.05
+        });
+      }
+    });
+
+    flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPositions, 3));
+    const flowMat = new THREE.PointsMaterial({
+      color: 0x4ff0ff,
+      size: 0.028,
+      transparent: true,
+      opacity: 0.65
+    });
+    const flowParticles = new THREE.Points(flowGeo, flowMat);
+    flowGroup.add(flowParticles);
+
+    // Ground Grid
+    const gridHelper = new THREE.GridHelper(20, 20, 0x185a7d, 0x092336);
+    gridHelper.position.y = -1.5;
+    scene.add(gridHelper);
+
+    // -------------------------------------------------------------
+    // 6. INTERACTIVE CONTROLS & ANIMATION MODES
+    // -------------------------------------------------------------
+    let exploded = false;
+    let propRpm = 3450;
+    let burstClimb = false;
+    let payloadDetached = false;
+
+    document.getElementById('btnExplode').onclick = (e) => {
+      exploded = !exploded;
+      e.target.classList.toggle('active', exploded);
+    };
+    document.getElementById('btnFlow').onclick = (e) => {
+      flowGroup.visible = !flowGroup.visible;
+      e.target.classList.toggle('active', flowGroup.visible);
+    };
+    document.getElementById('btnThrottle').onclick = (e) => {
+      burstClimb = !burstClimb;
+      e.target.classList.toggle('active', burstClimb);
+      propRpm = burstClimb ? 4400 : 3450;
+      document.getElementById('pwrVal').innerText = burstClimb ? "19.2 kW (CLIMB)" : "16.8 kW / 25 kW";
+    };
+    document.getElementById('btnPayload').onclick = (e) => {
+      payloadDetached = !payloadDetached;
+      e.target.classList.toggle('active', payloadDetached);
+      e.target.innerText = payloadDetached ? "REATTACH PAYLOAD" : "DETACH PAYLOAD";
+    };
+    document.getElementById('btnOrbit').onclick = () => {
+      camera.position.set(0, 3.2, 7.5);
+      controls.target.set(0, 0, 0);
+    };
+
+    // -------------------------------------------------------------
+    // 7. ANIMATION LOOP
+    // -------------------------------------------------------------
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const spinSpeed = (propRpm / 60) * Math.PI * 2 * delta;
+
+      // Spin Counter-Rotating Blades
+      upperProps.forEach(p => p.rotation.y += spinSpeed);
+      lowerProps.forEach(p => p.rotation.y -= spinSpeed);
+
+      // Exploded View Interpolation
+      const targetArmDist = exploded ? 0.35 : 0.0;
+      const targetPayloadDist = payloadDetached ? -1.8 : (exploded ? -0.45 : 0.0);
+      const targetDomeDist = exploded ? 0.35 : 0.0;
+
+      armsGroup.position.y += (targetArmDist - armsGroup.position.y) * 0.08;
+      payloadGroup.position.y += (targetPayloadDist - payloadGroup.position.y) * 0.08;
+      domeMesh.position.y += ((0.22 + targetDomeDist) - domeMesh.position.y) * 0.08;
+
+      // Update Downwash Streamline Particles
+      if (flowGroup.visible) {
+        const positions = flowParticles.geometry.attributes.position.array;
+        for (let i = 0; i < particleCount; i++) {
+          positions[i * 3 + 1] -= flowVelocities[i].speed;
+          // Wake contraction: particle moves closer to center as it accelerates downward
+          positions[i * 3] += (flowVelocities[i].homeX * 0.85 - positions[i * 3]) * 0.02;
+          positions[i * 3 + 2] += (flowVelocities[i].homeZ * 0.85 - positions[i * 3 + 2]) * 0.02;
+
+          if (positions[i * 3 + 1] < -2.8) {
+            // Reset particle at rotor plane
+            positions[i * 3 + 1] = -0.2;
+            const ang = Math.random() * Math.PI * 2;
+            const r = Math.random() * 0.38;
+            positions[i * 3] = flowVelocities[i].homeX + r * Math.cos(ang);
+            positions[i * 3 + 2] = flowVelocities[i].homeZ + r * Math.sin(ang);
+          }
+        }
+        flowParticles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
